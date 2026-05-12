@@ -1,0 +1,1996 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#c9a84c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="NP Tracker">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="shortcut icon" href="icon-192.png">
+<title>Noble Phantasm Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════
+   VARIABLES & RESET
+═══════════════════════════════════════ */
+:root {
+  --gold: #c9a84c;
+  --gold-bright: #f0c040;
+  --gold-dim: #7a5f20;
+  --gold-faint: rgba(201,168,76,0.08);
+  --crimson: #8b1a1a;
+  --crimson-b: #c0392b;
+  --dark: #0a0806;
+  --dark-2: #120e09;
+  --dark-3: #1c1510;
+  --panel: #16120d;
+  --panel-2: #1e1810;
+  --text: #e8d9b0;
+  --text-dim: #9a8860;
+  --text-muted: #5a4e35;
+  --blue: #3a7bd5;
+  --blue-b: #5ba3f5;
+  --green: #27ae60;
+  --green-b: #2ecc71;
+  --red: #c0392b;
+  --red-b: #e74c3c;
+  --prayer: #7b5ea7;
+  --prayer-b: #a87fd4;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bot: env(safe-area-inset-bottom, 0px);
+  --nav-h: 64px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html { font-size: 15px; }
+
+body {
+  background: var(--dark);
+  color: var(--text);
+  font-family: 'Crimson Text', Georgia, serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+  padding-bottom: calc(var(--nav-h) + var(--safe-bot) + 10px);
+  padding-top: var(--safe-top);
+}
+
+/* ═══════════════════════════════════════
+   PARTICLE CANVAS
+═══════════════════════════════════════ */
+#bgCanvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.35;
+}
+
+/* ═══════════════════════════════════════
+   BOTTOM NAV
+═══════════════════════════════════════ */
+.nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: calc(var(--nav-h) + var(--safe-bot));
+  background: rgba(10,8,6,0.97);
+  border-top: 1px solid rgba(201,168,76,0.15);
+  display: flex;
+  align-items: flex-start;
+  padding-top: 6px;
+  padding-bottom: var(--safe-bot);
+  z-index: 100;
+  backdrop-filter: blur(12px);
+}
+
+.nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+.nav-btn.active { color: var(--gold); }
+.nav-icon { font-size: 1.3rem; line-height: 1; }
+.nav-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.52rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ═══════════════════════════════════════
+   PAGES
+═══════════════════════════════════════ */
+.page { display: none; position: relative; z-index: 1; min-height: 80vh; animation: pgIn 0.3s ease; }
+.page.active { display: block; }
+@keyframes pgIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
+
+/* ═══════════════════════════════════════
+   SHARED COMPONENTS
+═══════════════════════════════════════ */
+.page-header {
+  padding: 1.4rem 1.2rem 0.8rem;
+  background: linear-gradient(180deg, rgba(201,168,76,0.05), transparent);
+  border-bottom: 1px solid rgba(201,168,76,0.1);
+  margin-bottom: 1rem;
+}
+.page-eyebrow {
+  font-family: 'Cinzel', serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.35em;
+  color: var(--gold-dim);
+  text-transform: uppercase;
+  margin-bottom: 0.2rem;
+}
+.page-title {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.3rem;
+  color: var(--gold);
+  text-shadow: 0 0 30px rgba(201,168,76,0.3);
+}
+.page-sub {
+  font-size: 0.82rem;
+  color: var(--text-dim);
+  font-style: italic;
+  margin-top: 0.2rem;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid rgba(201,168,76,0.12);
+  border-radius: 8px;
+  padding: 1rem 1.1rem;
+  margin: 0 0.8rem 0.8rem;
+}
+.card-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  color: var(--gold-dim);
+  text-transform: uppercase;
+  margin-bottom: 0.6rem;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  padding: 0.18rem 0.55rem;
+  border-radius: 3px;
+  border: 1px solid;
+}
+.pill-p { border-color: rgba(91,163,245,0.4); color: var(--blue-b); background: rgba(58,123,213,0.07); }
+.pill-c { border-color: rgba(201,168,76,0.3); color: var(--gold); background: rgba(201,168,76,0.05); }
+.pill-g { border-color: rgba(46,204,113,0.3); color: var(--green-b); background: rgba(46,204,113,0.05); }
+.pill-r { border-color: rgba(192,57,43,0.3); color: var(--red-b); background: rgba(192,57,43,0.05); }
+.pill-pr { border-color: rgba(168,127,212,0.4); color: var(--prayer-b); background: rgba(123,94,167,0.07); }
+
+/* Checkbox */
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid rgba(201,168,76,0.06);
+  cursor: pointer;
+  transition: background 0.15s;
+  border-radius: 4px;
+}
+.check-row:last-child { border-bottom: none; }
+.check-row:active { background: rgba(201,168,76,0.04); }
+
+.check-box {
+  width: 20px; height: 20px;
+  border: 1.5px solid var(--gold-dim);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  font-size: 0.7rem;
+  color: transparent;
+}
+.check-row.done .check-box {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--dark);
+}
+.check-text { flex: 1; font-size: 0.9rem; line-height: 1.3; }
+.check-row.done .check-text { color: var(--text-dim); text-decoration: line-through; }
+.check-sets {
+  font-family: 'Cinzel', serif;
+  font-size: 0.62rem;
+  color: var(--gold-dim);
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+
+/* Progress bar */
+.prog-wrap { margin: 0.5rem 0; }
+.prog-header { display: flex; justify-content: space-between; font-family: 'Cinzel', serif; font-size: 0.62rem; color: var(--text-dim); margin-bottom: 0.3rem; letter-spacing: 0.08em; }
+.prog-track { height: 5px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden; }
+.prog-fill { height: 100%; border-radius: 3px; transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1); }
+.prog-gold { background: linear-gradient(90deg, var(--gold-dim), var(--gold-bright)); }
+.prog-blue { background: linear-gradient(90deg, var(--blue), var(--blue-b)); }
+.prog-green { background: linear-gradient(90deg, var(--green), var(--green-b)); }
+
+/* Btn */
+.btn {
+  font-family: 'Cinzel', serif;
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 0.65rem 1.2rem;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.btn-gold { background: var(--gold); color: var(--dark); font-weight: 700; }
+.btn-gold:active { transform: scale(0.97); opacity: 0.9; }
+.btn-outline { background: transparent; border: 1px solid rgba(201,168,76,0.3); color: var(--gold); }
+.btn-outline:active { background: rgba(201,168,76,0.08); }
+.btn-block { width: 100%; justify-content: center; }
+.btn-sm { padding: 0.4rem 0.8rem; font-size: 0.6rem; }
+
+/* Tag */
+.tag { display: inline-block; font-family:'Cinzel',serif; font-size:0.55rem; letter-spacing:0.1em; padding:0.12rem 0.5rem; border:1px solid rgba(201,168,76,0.2); color:var(--gold-dim); border-radius:2px; margin:0.15rem; }
+
+/* Divider */
+.hdiv { height:1px; background:linear-gradient(90deg,transparent,rgba(201,168,76,0.2),transparent); margin:0.8rem 0; }
+
+/* Toast */
+#toast {
+  position: fixed;
+  bottom: calc(var(--nav-h) + var(--safe-bot) + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(201,168,76,0.95);
+  color: var(--dark);
+  font-family: 'Cinzel', serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  padding: 0.6rem 1.2rem;
+  border-radius: 4px;
+  opacity: 0;
+  transition: all 0.3s;
+  pointer-events: none;
+  z-index: 200;
+  white-space: nowrap;
+}
+#toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* ═══════════════════════════════════════
+   PAGE 1: DASHBOARD (HOME)
+═══════════════════════════════════════ */
+.hero-strip {
+  background: linear-gradient(135deg, rgba(201,168,76,0.06), rgba(139,26,26,0.04));
+  border-bottom: 1px solid rgba(201,168,76,0.1);
+  padding: 1.4rem 1.2rem 1rem;
+  position: relative;
+  overflow: hidden;
+}
+.hero-strip::after {
+  content: '';
+  position: absolute;
+  bottom: -1px; left: 15%; right: 15%;
+  height: 1px;
+  background: linear-gradient(90deg,transparent,var(--gold),transparent);
+}
+
+.servant-name {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.5rem;
+  color: var(--gold);
+  text-shadow: 0 0 40px rgba(201,168,76,0.4);
+  line-height: 1.1;
+}
+.servant-class {
+  font-family: 'Cinzel', serif;
+  font-size: 0.62rem;
+  letter-spacing: 0.3em;
+  color: var(--text-dim);
+  margin-bottom: 0.8rem;
+}
+
+.stat-row-h {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+.stat-mini {
+  background: rgba(201,168,76,0.05);
+  border: 1px solid rgba(201,168,76,0.12);
+  border-radius: 5px;
+  padding: 0.5rem 0.4rem;
+  text-align: center;
+}
+.stat-mini-val {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1rem;
+  color: var(--gold-bright);
+  line-height: 1.1;
+  display: block;
+}
+.stat-mini-lbl {
+  font-family: 'Cinzel', serif;
+  font-size: 0.48rem;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  display: block;
+  margin-top: 0.1rem;
+}
+
+/* Time block */
+.time-now {
+  font-family: 'Cinzel', serif;
+  font-size: 2rem;
+  color: var(--gold);
+  letter-spacing: 0.05em;
+  line-height: 1;
+}
+.date-now {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.schedule-block {
+  border-left: 2px solid var(--gold-dim);
+  padding-left: 0.8rem;
+  margin: 0.4rem 0;
+}
+.sched-label {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  color: var(--gold-dim);
+  text-transform: uppercase;
+}
+.sched-current {
+  font-family: 'Cinzel', serif;
+  font-size: 0.9rem;
+  color: var(--gold);
+}
+.sched-next {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.streak-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(90deg, rgba(201,168,76,0.08), transparent);
+  border: 1px solid rgba(201,168,76,0.2);
+  border-radius: 6px;
+  padding: 0.6rem 0.9rem;
+}
+.streak-fire { font-size: 1.6rem; }
+.streak-num {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.4rem;
+  color: var(--gold-bright);
+  line-height: 1;
+}
+.streak-txt { font-size: 0.75rem; color: var(--text-dim); }
+.streak-txt strong { color: var(--gold); font-family:'Cinzel',serif; font-size:0.65rem; letter-spacing:0.1em; display:block; }
+
+.prayer-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0.4rem;
+}
+.prayer-mini {
+  background: rgba(123,94,167,0.08);
+  border: 1px solid rgba(168,127,212,0.15);
+  border-radius: 5px;
+  text-align: center;
+  padding: 0.45rem 0.2rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.prayer-mini.done {
+  background: rgba(123,94,167,0.25);
+  border-color: var(--prayer-b);
+}
+.prayer-mini-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.52rem;
+  letter-spacing: 0.05em;
+  color: var(--prayer-b);
+  display: block;
+}
+.prayer-mini-time {
+  font-size: 0.6rem;
+  color: var(--text-dim);
+  display: block;
+  margin-top: 0.1rem;
+}
+.prayer-check { font-size: 0.75rem; margin-top: 0.15rem; display:block; opacity:0; transition:opacity 0.2s; }
+.prayer-mini.done .prayer-check { opacity:1; }
+
+/* ═══════════════════════════════════════
+   PAGE 2: SCHEDULE
+═══════════════════════════════════════ */
+.sched-timeline { padding: 0 0.8rem; }
+.sched-item {
+  display: flex;
+  gap: 0.8rem;
+  margin-bottom: 0.6rem;
+  position: relative;
+}
+.sched-item::before {
+  content: '';
+  position: absolute;
+  left: 52px;
+  top: 22px;
+  bottom: -8px;
+  width: 1px;
+  background: linear-gradient(180deg, rgba(201,168,76,0.2), transparent);
+}
+.sched-item:last-child::before { display:none; }
+
+.sched-time-col {
+  width: 46px;
+  flex-shrink: 0;
+  text-align: right;
+}
+.sched-t {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  color: var(--gold-dim);
+  letter-spacing: 0.05em;
+  line-height: 1.3;
+}
+
+.sched-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+  border: 2px solid;
+}
+.dot-class  { border-color: var(--blue-b);    background: rgba(58,123,213,0.2); }
+.dot-meal   { border-color: var(--gold);      background: rgba(201,168,76,0.2); }
+.dot-prayer { border-color: var(--prayer-b);  background: rgba(123,94,167,0.2); }
+.dot-train  { border-color: var(--red-b);     background: rgba(192,57,43,0.2); }
+.dot-sleep  { border-color: var(--text-muted); background: rgba(90,78,53,0.2); }
+.dot-study  { border-color: var(--green-b);   background: rgba(46,204,113,0.15); }
+.dot-free   { border-color: var(--text-dim);  background: rgba(154,136,96,0.1); }
+
+.sched-card-s {
+  flex: 1;
+  background: var(--panel);
+  border: 1px solid rgba(201,168,76,0.1);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  margin-bottom: 0;
+}
+.sched-card-s.current-block {
+  border-color: rgba(201,168,76,0.4);
+  background: linear-gradient(90deg, rgba(201,168,76,0.07), var(--panel));
+}
+.sched-name {
+  font-family: 'Cinzel', serif;
+  font-size: 0.75rem;
+  color: var(--text);
+  letter-spacing: 0.05em;
+}
+.sched-desc { font-size: 0.78rem; color: var(--text-dim); margin-top: 0.15rem; }
+.sched-tip {
+  font-size: 0.72rem;
+  color: var(--gold-dim);
+  font-style: italic;
+  margin-top: 0.2rem;
+  border-top: 1px solid rgba(201,168,76,0.08);
+  padding-top: 0.2rem;
+}
+
+/* ═══════════════════════════════════════
+   PAGE 3: WORKOUT
+═══════════════════════════════════════ */
+.day-tabs {
+  display: flex;
+  overflow-x: auto;
+  gap: 0.4rem;
+  padding: 0 0.8rem 0.8rem;
+  scrollbar-width: none;
+}
+.day-tabs::-webkit-scrollbar { display:none; }
+.day-tab {
+  font-family: 'Cinzel', serif;
+  font-size: 0.6rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.4rem 0.8rem;
+  border-radius: 4px;
+  border: 1px solid rgba(201,168,76,0.15);
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.day-tab.active { background: var(--gold); color: var(--dark); border-color: var(--gold); font-weight:700; }
+.day-tab.today-tab { border-color: rgba(201,168,76,0.4); color: var(--gold); }
+
+.workout-panel { display:none; }
+.workout-panel.active { display:block; animation: pgIn 0.25s ease; }
+
+.exercise-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid rgba(201,168,76,0.06);
+  cursor: pointer;
+}
+.exercise-item:last-child { border-bottom: none; }
+.ex-check {
+  width: 22px; height: 22px;
+  border: 1.5px solid var(--gold-dim);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  font-size: 0.8rem;
+  color: transparent;
+  background: transparent;
+}
+.exercise-item.done .ex-check {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--dark);
+}
+.ex-info { flex:1; }
+.ex-n { font-size: 0.88rem; color: var(--text); line-height:1.2; }
+.exercise-item.done .ex-n { color:var(--text-dim); text-decoration:line-through; }
+.ex-s { font-family:'Cinzel',serif; font-size:0.58rem; color:var(--gold-dim); letter-spacing:0.08em; margin-top:0.1rem; }
+
+.completion-ring {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1rem;
+}
+.ring-svg { position:relative; }
+
+/* ═══════════════════════════════════════
+   PAGE 4: NUTRITION
+═══════════════════════════════════════ */
+.protein-display {
+  text-align: center;
+  padding: 1rem 0 0.5rem;
+}
+.protein-num {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 2.8rem;
+  color: var(--blue-b);
+  text-shadow: 0 0 30px rgba(91,163,245,0.3);
+  line-height: 1;
+}
+.protein-target { font-size: 0.8rem; color: var(--text-dim); margin-top: 0.2rem; }
+
+.log-item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid rgba(201,168,76,0.06);
+}
+.log-item:last-child { border-bottom:none; }
+.log-time { font-family:'Cinzel',serif; font-size:0.6rem; color:var(--gold-dim); min-width:36px; }
+.log-name { flex:1; font-size:0.85rem; }
+.log-g { font-family:'Cinzel',serif; font-size:0.7rem; color:var(--blue-b); }
+.log-del { background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:0.9rem;padding:0.2rem; }
+
+.snack-quick {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+.snack-q {
+  background: var(--panel-2);
+  border: 1px solid rgba(201,168,76,0.1);
+  border-radius: 5px;
+  padding: 0.6rem 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+}
+.snack-q:active { border-color:rgba(201,168,76,0.4); transform:scale(0.98); }
+.snack-q-icon { font-size:1.1rem; margin-bottom:0.2rem; display:block; }
+.snack-q-name { font-family:'Cinzel',serif; font-size:0.62rem; color:var(--text); letter-spacing:0.05em; display:block; }
+.snack-q-p { font-size:0.68rem; color:var(--blue-b); display:block; margin-top:0.1rem; }
+
+.num-input {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--panel-2);
+  border: 1px solid rgba(201,168,76,0.2);
+  border-radius: 5px;
+  padding: 0.3rem 0.5rem;
+}
+.num-input input {
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-family: 'Cinzel', serif;
+  font-size: 0.85rem;
+  width: 60px;
+  text-align: center;
+}
+.num-btn {
+  background: none;
+  border: none;
+  color: var(--gold);
+  font-size: 1.1rem;
+  cursor: pointer;
+  padding: 0 0.2rem;
+  line-height:1;
+}
+
+/* custom log modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 300;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.modal-overlay.open { display:flex; }
+.modal-sheet {
+  background: var(--dark-2);
+  border: 1px solid rgba(201,168,76,0.2);
+  border-radius: 12px 12px 0 0;
+  padding: 1.5rem 1.2rem calc(1.5rem + var(--safe-bot));
+  width: 100%;
+  max-width: 480px;
+  animation: sheetUp 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes sheetUp { from { transform:translateY(100%); } to { transform:none; } }
+
+.modal-title {
+  font-family: 'Cinzel', serif;
+  font-size: 0.8rem;
+  letter-spacing: 0.2em;
+  color: var(--gold);
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+.modal-input {
+  width: 100%;
+  background: var(--panel);
+  border: 1px solid rgba(201,168,76,0.2);
+  border-radius: 5px;
+  padding: 0.7rem 0.9rem;
+  color: var(--text);
+  font-family: 'Crimson Text', serif;
+  font-size: 1rem;
+  outline: none;
+  margin-bottom: 0.6rem;
+  display: block;
+}
+.modal-input:focus { border-color: var(--gold); }
+
+/* ═══════════════════════════════════════
+   PAGE 5: STATS
+═══════════════════════════════════════ */
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.6rem;
+  padding: 0 0.8rem 0.8rem;
+}
+.stat-block {
+  background: var(--panel);
+  border: 1px solid rgba(201,168,76,0.1);
+  border-radius: 7px;
+  padding: 0.9rem;
+  text-align: center;
+}
+.stat-block-num {
+  font-family: 'Cinzel Decorative', serif;
+  font-size: 1.8rem;
+  line-height: 1;
+  margin-bottom: 0.2rem;
+}
+.stat-block-lbl {
+  font-family: 'Cinzel', serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.15em;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(7,1fr);
+  gap: 0.4rem;
+}
+.week-day {
+  aspect-ratio: 1;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: var(--panel);
+  border: 1px solid rgba(201,168,76,0.08);
+  cursor: pointer;
+}
+.week-day.has-workout { border-color: rgba(201,168,76,0.3); background: rgba(201,168,76,0.07); }
+.week-day.has-prayer  { border-color: rgba(168,127,212,0.25); }
+.week-day.today { border-color: var(--gold); box-shadow: 0 0 8px rgba(201,168,76,0.2); }
+.wd-label { font-family:'Cinzel',serif; font-size:0.5rem; color:var(--text-muted); letter-spacing:0.05em; }
+.wd-num { font-family:'Cinzel',serif; font-size:0.7rem; color:var(--text-dim); }
+.wd-dot { width:5px;height:5px;border-radius:50%; }
+
+.phase-progress {
+  background: var(--panel);
+  border: 1px solid rgba(201,168,76,0.12);
+  border-radius: 7px;
+  padding: 1rem 1.1rem;
+  margin: 0 0.8rem 0.8rem;
+}
+.phase-arc {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.8rem;
+}
+.phase-name-l { font-family:'Cinzel',serif; font-size:0.75rem; color:var(--gold); }
+.phase-week-l { font-family:'Cinzel',serif; font-size:0.6rem; color:var(--text-dim); letter-spacing:0.1em; }
+
+/* ═══════════════════════════════════════
+   INSTALL BANNER
+═══════════════════════════════════════ */
+#installBanner {
+  display: none;
+  position: fixed;
+  top: calc(var(--safe-top) + 8px);
+  left: 0.8rem; right: 0.8rem;
+  background: linear-gradient(90deg,rgba(201,168,76,0.12),rgba(201,168,76,0.06));
+  border: 1px solid rgba(201,168,76,0.3);
+  border-radius: 8px;
+  padding: 0.8rem 1rem;
+  z-index: 150;
+  display: none;
+  align-items: center;
+  gap: 0.8rem;
+}
+#installBanner.visible { display:flex; }
+.install-txt { flex:1; font-size:0.8rem; color:var(--text-dim); }
+.install-txt strong { color:var(--gold); font-family:'Cinzel',serif; font-size:0.65rem; letter-spacing:0.1em; display:block; margin-bottom:0.15rem; }
+</style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<!-- ══════════ TOAST ══════════ -->
+<div id="toast"></div>
+
+<!-- ══════════ INSTALL BANNER ══════════ -->
+<div id="installBanner">
+  <span style="font-size:1.4rem">📲</span>
+  <div class="install-txt">
+    <strong>Add to Home Screen</strong>
+    Install for offline access — works like a real app
+  </div>
+  <button class="btn btn-gold btn-sm" id="installBtn">Install</button>
+  <button onclick="document.getElementById('installBanner').classList.remove('visible')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.1rem;padding:0.2rem;">✕</button>
+</div>
+
+<!-- ════════════════════════════════════
+     PAGE: HOME / DASHBOARD
+════════════════════════════════════ -->
+<div class="page active" id="pg-home">
+
+  <div class="hero-strip">
+    <div class="servant-class">SERVANT · ARCHER CLASS · CALISTHENICS PROTOCOL</div>
+    <div class="servant-name">Noble Phantasm<br>Tracker</div>
+    <div class="stat-row-h" style="margin-top:0.8rem;">
+      <div class="stat-mini">
+        <span class="stat-mini-val">76</span>
+        <span class="stat-mini-lbl">kg</span>
+      </div>
+      <div class="stat-mini">
+        <span class="stat-mini-val">6'1"</span>
+        <span class="stat-mini-lbl">height</span>
+      </div>
+      <div class="stat-mini">
+        <span class="stat-mini-val" id="home-streak-num">0</span>
+        <span class="stat-mini-lbl">streak</span>
+      </div>
+      <div class="stat-mini">
+        <span class="stat-mini-val" id="home-protein-num">0g</span>
+        <span class="stat-mini-lbl">protein</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Time & Current Block -->
+  <div class="card" style="margin-top:0.8rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.5rem;">
+      <div>
+        <div class="time-now" id="clock">--:--</div>
+        <div class="date-now" id="dateDisplay">--</div>
+      </div>
+      <div class="streak-badge">
+        <span class="streak-fire">🔥</span>
+        <div>
+          <div class="streak-num" id="streakNum">0</div>
+          <div class="streak-txt"><strong>Day Streak</strong>Training days logged</div>
+        </div>
+      </div>
+    </div>
+    <div class="hdiv"></div>
+    <div class="schedule-block">
+      <div class="sched-label">Current Block</div>
+      <div class="sched-current" id="currentBlock">Loading...</div>
+      <div class="sched-next" id="nextBlock">Next: —</div>
+    </div>
+  </div>
+
+  <!-- Prayers -->
+  <div class="card">
+    <div class="card-title">⟡ Prayer Tracker</div>
+    <div class="prayer-row" id="prayerRow">
+      <!-- generated by JS -->
+    </div>
+  </div>
+
+  <!-- Today's workout summary -->
+  <div class="card">
+    <div class="card-title">⚔ Today's Training</div>
+    <div id="home-workout-summary">Loading...</div>
+    <div class="hdiv"></div>
+    <div class="prog-wrap">
+      <div class="prog-header"><span>Workout Progress</span><span id="home-workout-pct">0%</span></div>
+      <div class="prog-track"><div class="prog-fill prog-gold" id="home-workout-bar" style="width:0%"></div></div>
+    </div>
+    <div class="prog-wrap">
+      <div class="prog-header"><span>Protein Target</span><span id="home-protein-pct">0 / 155g</span></div>
+      <div class="prog-track"><div class="prog-fill prog-blue" id="home-protein-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- Mana tip of the day -->
+  <div class="card" style="border-color:rgba(201,168,76,0.2);background:linear-gradient(135deg,rgba(201,168,76,0.05),var(--panel));">
+    <div class="card-title">✦ Servant's Wisdom</div>
+    <div id="daily-tip" style="font-style:italic;font-size:0.88rem;color:var(--text-dim);line-height:1.5;"></div>
+  </div>
+
+</div>
+
+<!-- ════════════════════════════════════
+     PAGE: SCHEDULE
+════════════════════════════════════ -->
+<div class="page" id="pg-schedule">
+  <div class="page-header">
+    <div class="page-eyebrow">Daily Protocol</div>
+    <div class="page-title">Battle Schedule</div>
+    <div class="page-sub">Your exact timetable · Editable Salah times</div>
+  </div>
+
+  <!-- Day navigation -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:0 0.8rem 0.8rem;">
+    <button class="btn btn-outline btn-sm" onclick="changeSchedDay(-1)">← Prev</button>
+    <div id="schedDayLabel" style="font-family:'Cinzel',serif;font-size:0.78rem;color:var(--gold);letter-spacing:0.1em;"></div>
+    <button class="btn btn-outline btn-sm" onclick="changeSchedDay(1)">Next →</button>
+  </div>
+
+  <div id="schedTimeline"><!-- JS renders salah editor + timeline here --></div>
+</div>
+
+<!-- ════════════════════════════════════
+     PAGE: WORKOUT
+════════════════════════════════════ -->
+<div class="page" id="pg-workout">
+  <div class="page-header">
+    <div class="page-eyebrow">Combat Training</div>
+    <div class="page-title">Workout Log</div>
+    <div class="page-sub">Pure Calisthenics · Push · Pull · Legs · Zero Equipment*</div>
+  </div>
+
+  <div class="day-tabs" id="dayTabs"><!-- JS --></div>
+
+  <div id="workoutPanels"><!-- JS --></div>
+</div>
+
+<!-- ════════════════════════════════════
+     PAGE: NUTRITION
+════════════════════════════════════ -->
+<div class="page" id="pg-nutrition">
+  <div class="page-header">
+    <div class="page-eyebrow">Mana Replenishment</div>
+    <div class="page-title">Protein Tracker</div>
+    <div class="page-sub">Daily target: 150–160g · Halal sources only</div>
+  </div>
+
+  <div class="card" style="text-align:center;">
+    <div class="protein-display">
+      <div class="protein-num" id="proteinTotal">0</div>
+      <div class="protein-target">of 155g daily target</div>
+    </div>
+    <div class="prog-wrap" style="margin-top:0.5rem;">
+      <div class="prog-track" style="height:8px;"><div class="prog-fill prog-blue" id="proteinBar" style="width:0%;"></div></div>
+    </div>
+    <div style="display:flex;gap:0.5rem;justify-content:center;margin-top:0.7rem;flex-wrap:wrap;" id="macroPills">
+      <span class="pill pill-p">🥩 Protein: <span id="pill-p">0</span>g</span>
+      <span class="pill pill-c">🍚 Carbs: ~<span id="pill-c">320</span>g</span>
+      <span class="pill pill-g">🔥 Kcal: ~<span id="pill-k">0</span></span>
+    </div>
+  </div>
+
+  <!-- Quick-add snacks -->
+  <div class="card">
+    <div class="card-title">🏹 Quick Add — Room Snacks</div>
+    <div class="snack-quick" id="quickSnacks"><!-- JS --></div>
+  </div>
+
+  <!-- Custom log -->
+  <div class="card">
+    <div class="card-title">✦ Custom Entry</div>
+    <div style="display:flex;gap:0.6rem;align-items:center;flex-wrap:wrap;">
+      <input id="customFoodName" class="modal-input" style="margin:0;flex:1;min-width:120px;" placeholder="Food name…" type="text">
+      <div class="num-input">
+        <button class="num-btn" onclick="adjustCustom(-5)">−</button>
+        <input id="customProtein" type="number" value="20" min="0" max="200">
+        <button class="num-btn" onclick="adjustCustom(5)">+</button>
+      </div>
+      <span style="font-family:'Cinzel',serif;font-size:0.65rem;color:var(--text-dim);">g protein</span>
+      <button class="btn btn-gold" onclick="logCustom()">Log</button>
+    </div>
+  </div>
+
+  <!-- Today's log -->
+  <div class="card">
+    <div class="card-title">📜 Today's Log</div>
+    <div id="proteinLog"><div style="color:var(--text-muted);font-style:italic;font-size:0.85rem;">Nothing logged yet — add snacks above</div></div>
+    <div class="hdiv"></div>
+    <button class="btn btn-outline btn-sm" onclick="resetDay()">⟡ Reset Today's Log</button>
+  </div>
+
+  <!-- School meal guide -->
+  <div class="card">
+    <div class="card-title">🍽 School Meal Strategy</div>
+    <div style="font-size:0.85rem;color:var(--text-dim);line-height:1.6;">
+      <div style="margin-bottom:0.4rem;">⟡ <strong style="color:var(--text);">Breakfast (7–8am)</strong> — 2–3 eggs + meat option + whole-grain bread + milk → ~35g protein</div>
+      <div style="margin-bottom:0.4rem;">⟡ <strong style="color:var(--text);">Lunch (11:30am)</strong> — halal protein main + veg → ~40g protein</div>
+      <div>⟡ <strong style="color:var(--text);">Dinner (after Maghrib)</strong> — halal protein + veg → ~35g protein</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════
+     PAGE: STATS
+════════════════════════════════════ -->
+<div class="page" id="pg-stats">
+  <div class="page-header">
+    <div class="page-eyebrow">Servant Status</div>
+    <div class="page-title">Progress Board</div>
+    <div class="page-sub">12-Week Arc · Foundation → A-Rank</div>
+  </div>
+
+  <!-- Overall stats -->
+  <div class="stats-grid">
+    <div class="stat-block">
+      <div class="stat-block-num" id="stat-streak" style="color:var(--gold);">0</div>
+      <div class="stat-block-lbl">Day Streak</div>
+    </div>
+    <div class="stat-block">
+      <div class="stat-block-num" id="stat-workouts" style="color:var(--red-b);">0</div>
+      <div class="stat-block-lbl">Workouts Done</div>
+    </div>
+    <div class="stat-block">
+      <div class="stat-block-num" id="stat-prayers" style="color:var(--prayer-b);">0</div>
+      <div class="stat-block-lbl">Prayers Tracked</div>
+    </div>
+    <div class="stat-block">
+      <div class="stat-block-num" id="stat-protein-avg" style="color:var(--blue-b);">0g</div>
+      <div class="stat-block-lbl">Avg Protein/Day</div>
+    </div>
+  </div>
+
+  <!-- 12-week phase -->
+  <div class="phase-progress">
+    <div class="phase-arc">
+      <div>
+        <div class="phase-name-l" id="phase-name-display">Phase I — Foundation</div>
+        <div class="phase-week-l" id="phase-week-display">Week 1 of 12</div>
+      </div>
+      <div style="font-family:'Cinzel Decorative',serif;font-size:1.8rem;color:rgba(201,168,76,0.15);" id="phase-roman">I</div>
+    </div>
+    <div class="prog-wrap">
+      <div class="prog-header"><span>12-Week Journey</span><span id="phase-pct">0%</span></div>
+      <div class="prog-track"><div class="prog-fill prog-gold" id="phase-bar" style="width:0%"></div></div>
+    </div>
+    <div style="margin-top:0.6rem;font-size:0.8rem;color:var(--text-dim);font-style:italic;" id="phase-desc">Master form on all exercises. Build the habit first.</div>
+  </div>
+
+  <!-- This week calendar -->
+  <div class="card">
+    <div class="card-title">⟡ This Week</div>
+    <div class="week-grid" id="weekGrid"><!-- JS --></div>
+    <div style="display:flex;gap:0.8rem;margin-top:0.8rem;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:0.3rem;font-family:'Cinzel',serif;font-size:0.55rem;color:var(--text-muted);">
+        <div style="width:8px;height:8px;border-radius:2px;background:rgba(201,168,76,0.3);border:1px solid rgba(201,168,76,0.5);"></div> Workout
+      </div>
+      <div style="display:flex;align-items:center;gap:0.3rem;font-family:'Cinzel',serif;font-size:0.55rem;color:var(--text-muted);">
+        <div style="width:8px;height:8px;border-radius:2px;background:rgba(168,127,212,0.25);border:1px solid rgba(168,127,212,0.4);"></div> Prayer ✓
+      </div>
+      <div style="display:flex;align-items:center;gap:0.3rem;font-family:'Cinzel',serif;font-size:0.55rem;color:var(--text-muted);">
+        <div style="width:8px;height:8px;border-radius:2px;border:1px solid rgba(201,168,76,0.2);"></div> Today
+      </div>
+    </div>
+  </div>
+
+  <!-- Reset + Info -->
+  <div class="card">
+    <div class="card-title">⚙ Settings</div>
+    <div style="display:flex;flex-direction:column;gap:0.6rem;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:0.85rem;color:var(--text-dim);">Start Date (Week 1)</div>
+        <input type="date" id="startDateInput" style="background:var(--panel-2);border:1px solid rgba(201,168,76,0.2);border-radius:4px;color:var(--text);font-family:'Cinzel',serif;font-size:0.65rem;padding:0.3rem 0.5rem;outline:none;" onchange="saveStartDate()">
+      </div>
+      <div class="hdiv"></div>
+      <button class="btn btn-outline btn-sm" onclick="exportData()">⟡ Export Progress (JSON)</button>
+      <button class="btn btn-outline btn-sm" style="border-color:rgba(192,57,43,0.3);color:var(--red-b);" onclick="confirmReset()">✕ Reset All Data</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════
+     BOTTOM NAV
+════════════════════════════════════ -->
+<nav class="nav">
+  <button class="nav-btn active" onclick="navTo('home',this)">
+    <span class="nav-icon">⚡</span>
+    <span class="nav-label">Home</span>
+  </button>
+  <button class="nav-btn" onclick="navTo('schedule',this)">
+    <span class="nav-icon">📅</span>
+    <span class="nav-label">Schedule</span>
+  </button>
+  <button class="nav-btn" onclick="navTo('workout',this)">
+    <span class="nav-icon">⚔</span>
+    <span class="nav-label">Workout</span>
+  </button>
+  <button class="nav-btn" onclick="navTo('nutrition',this)">
+    <span class="nav-icon">🏹</span>
+    <span class="nav-label">Nutrition</span>
+  </button>
+  <button class="nav-btn" onclick="navTo('stats',this)">
+    <span class="nav-icon">📜</span>
+    <span class="nav-label">Stats</span>
+  </button>
+</nav>
+
+<script>
+/* ══════════════════════════════════════════
+   DATA DEFINITIONS
+══════════════════════════════════════════ */
+const DEFAULT_SALAH = [
+  { id:'fajr',    name:'Fajr',    start:'04:45', end:'05:20' },
+  { id:'dhuhr',   name:'Dhuhr',   start:'13:00', end:'13:30' },
+  { id:'asr',     name:'Asr',     start:'16:00', end:'16:30' },
+  { id:'maghrib', name:'Maghrib', start:'21:00', end:'21:30' },
+  { id:'isha',    name:'Isha',    start:'22:15', end:'22:45' }
+];
+
+// Base schedule blocks (Salah blocks are generated dynamically from salah times)
+const BASE_SCHEDULE = [
+  { id:'fajr_salah',   start:'04:45', end:'05:20', name:'Fajr Salah',              type:'prayer', dot:'dot-prayer',
+    desc:'Rise and pray. First victory of the day.',
+    tip:'Perform wudu before the iqamah. After salah: quiet dhikr or Quran before returning to rest.' },
+  { id:'rest1',        start:'05:21', end:'08:15', name:'Rest & Sleep',             type:'sleep',  dot:'dot-sleep',
+    desc:'Return to sleep. This is sacred recovery time — guard it.',
+    tip:'Sleep is when muscle is built. No screens. Full dark room. This block is non-negotiable.' },
+  { id:'alim',         start:'08:15', end:'11:30', name:'Alim Class',               type:'class',  dot:'dot-prayer',
+    desc:'Islamic studies. Full focus — this is your primary knowledge block.',
+    tip:'Carry water. If hunger hits mid-class, eat a small snack (protein bar, nuts) quietly.' },
+  { id:'lunch',        start:'11:30', end:'12:15', name:'Break & Lunch',            type:'meal',   dot:'dot-meal',
+    desc:'School lunch. Dhuhr prayer falls in this window — pray first, then eat.',
+    tip:'Target 35–40g protein. Half plate veg, quarter protein, quarter carbs. Ask for seconds on protein.' },
+  { id:'school',       start:'12:15', end:'16:15', name:'School Classes',           type:'class',  dot:'dot-class',
+    desc:'Afternoon academic block. Energy may dip around 2–3pm.',
+    tip:'Keep a halal snack in your bag. Eat it 30 min before the end of class to fuel your break training.' },
+  { id:'break1',       start:'16:15', end:'18:00', name:'Break & Training Window',  type:'train',  dot:'dot-train',
+    desc:'This is your combat window. 45–55 min calisthenics session. Asr prayer also falls here.',
+    tip:'Pre-workout: banana + protein 30 min before. Train, then eat within 30 min of finishing.' },
+  { id:'revision',     start:'18:00', end:'20:00', name:'Mandatory Revision',       type:'study',  dot:'dot-study',
+    desc:'2-hour compulsory study block. Toughest material goes here when mind is still sharp.',
+    tip:'Light snack mid-revision if needed. Hydrate — even mild dehydration cuts cognition by 10%.' },
+  { id:'dinner',       start:'20:00', end:'21:00', name:'Dinner & Break',           type:'meal',   dot:'dot-meal',
+    desc:'School dinner. Priority: halal protein main. Post-workout recovery meal if you trained earlier.',
+    tip:'If no post-workout shake yet, take it now. Aim 35–40g protein. Add veg generously.' },
+  { id:'maghrib_salah',start:'21:00', end:'21:30', name:'Maghrib Salah',            type:'prayer', dot:'dot-prayer',
+    desc:'Evening prayer. Step fully away from study — reset mind and body.',
+    tip:'After Maghrib: small snack if hungry. Light walk if energy allows. Hydrate well.' },
+  { id:'break2',       start:'21:30', end:'22:15', name:'Evening Break',            type:'free',   dot:'dot-free',
+    desc:'Wind down. Light revision, leisure, Quran, or social time.',
+    tip:'Avoid heavy meals now. A small protein snack (Greek yoghurt) is fine.' },
+  { id:'isha_salah',   start:'22:15', end:'22:45', name:'Isha Salah',               type:'prayer', dot:'dot-prayer',
+    desc:'Night prayer. End the day with gratitude and intention.',
+    tip:'After Isha: bedtime protein snack (cottage cheese or Greek yoghurt) for overnight muscle synthesis.' },
+  { id:'sleep',        start:'22:55', end:'04:45', name:'Sleep — Recovery Phase',   type:'sleep',  dot:'dot-sleep',
+    desc:'~6 hrs sleep before Fajr. Core recovery window.',
+    tip:'This is your Noble Phantasm charging phase. Muscles rebuild here. Guard it absolutely.' }
+];
+
+// Build live schedule injecting saved salah times for today
+function buildSchedule(dayKey) {
+  const salah = getSalahForDay(dayKey);
+  const salahMap = {};
+  salah.forEach(s => salahMap[s.id] = s);
+
+  return BASE_SCHEDULE.map(block => {
+    const s = { ...block };
+    if (s.id === 'fajr_salah' && salahMap['fajr']) {
+      s.start = salahMap['fajr'].start;
+      s.end   = salahMap['fajr'].end;
+      s.name  = 'Fajr Salah';
+    }
+    if (s.id === 'rest1' && salahMap['fajr']) {
+      // rest starts 1 min after fajr ends
+      const [h,m] = salahMap['fajr'].end.split(':').map(Number);
+      const next = m+1 >= 60 ? `${pad(h+1)}:${pad((m+1)%60)}` : `${pad(h)}:${pad(m+1)}`;
+      s.start = next;
+    }
+    if (s.id === 'maghrib_salah' && salahMap['maghrib']) {
+      s.start = salahMap['maghrib'].start;
+      s.end   = salahMap['maghrib'].end;
+    }
+    if (s.id === 'break2' && salahMap['maghrib']) {
+      const [h,m] = salahMap['maghrib'].end.split(':').map(Number);
+      const next = m+1 >= 60 ? `${pad(h+1)}:${pad((m+1)%60)}` : `${pad(h)}:${pad(m+1)}`;
+      s.start = next;
+    }
+    if (s.id === 'isha_salah' && salahMap['isha']) {
+      s.start = salahMap['isha'].start;
+      s.end   = salahMap['isha'].end;
+    }
+    if (s.id === 'sleep' && salahMap['isha']) {
+      const [h,m] = salahMap['isha'].end.split(':').map(Number);
+      const mins10 = m+10 >= 60 ? `${pad(h+1)}:${pad((m+10)%60)}` : `${pad(h)}:${pad(m+10)}`;
+      s.start = mins10;
+      if (salahMap['fajr']) s.end = salahMap['fajr'].start;
+    }
+    if (s.id === 'break1' && salahMap['asr']) {
+      // note asr during break — we just annotate it
+      s.desc = `Your combat window. Asr prayer (~${salahMap['asr'].start}) also falls here. Pray, then train.`;
+    }
+    if (s.id === 'lunch' && salahMap['dhuhr']) {
+      s.desc = `School lunch. Dhuhr prayer (~${salahMap['dhuhr'].start}) in this window — pray first, then eat.`;
+    }
+    return s;
+  });
+}
+
+// 6-day calisthenics split — zero equipment except floor, wall, chair & pull-up bar
+const WORKOUTS = {
+  Mon: {
+    name:'⚔ Push — Chest, Shoulders, Triceps',
+    type:'Calisthenics · Push Day',
+    exercises:[
+      { name:'Warm-up: Arm circles + shoulder rolls', sets:'2 min' },
+      { name:'Standard Push-ups',                    sets:'4 × 20' },
+      { name:'Wide Push-ups',                        sets:'3 × 15' },
+      { name:'Diamond Push-ups',                     sets:'3 × 12' },
+      { name:'Pike Push-ups (shoulder press sim.)',   sets:'4 × 12' },
+      { name:'Decline Push-ups (feet on chair)',      sets:'3 × 12' },
+      { name:'Tricep Dips (chair)',                   sets:'3 × 15' },
+      { name:'Pseudo Planche Lean (3 sec hold)',      sets:'3 × 8' },
+      { name:'Plank Hold',                           sets:'3 × 60 sec' }
+    ]
+  },
+  Tue: {
+    name:'🏹 Pull — Back & Biceps',
+    type:'Calisthenics · Pull Day',
+    exercises:[
+      { name:'Warm-up: Dead hang + scapula shrugs',  sets:'2 min' },
+      { name:'Pull-ups (overhand)',                   sets:'4 × max' },
+      { name:'Chin-ups (underhand)',                  sets:'3 × max' },
+      { name:'Inverted Rows (under table/bar)',       sets:'4 × 12' },
+      { name:'Scapula Pull-ups (dead hang shrugs)',   sets:'3 × 12' },
+      { name:'Negative Pull-ups (slow 5 sec lower)',  sets:'3 × 5' },
+      { name:'Commando Pull-ups (L/R alternate)',     sets:'2 × 6 each' },
+      { name:'Dead Hang',                            sets:'3 × 30 sec' }
+    ]
+  },
+  Wed: {
+    name:'🦵 Legs — Quads, Hamstrings, Glutes',
+    type:'Calisthenics · Leg Day',
+    exercises:[
+      { name:'Warm-up: Leg swings + hip circles',          sets:'2 min' },
+      { name:'Bodyweight Squats',                          sets:'4 × 25' },
+      { name:'Bulgarian Split Squats (rear foot on chair)',sets:'4 × 12 each' },
+      { name:'Walking Lunges',                             sets:'3 × 16 total' },
+      { name:'Step-ups (chair, explosive)',                sets:'3 × 12 each' },
+      { name:'Glute Bridges',                              sets:'4 × 20' },
+      { name:'Single-Leg Glute Bridge',                    sets:'3 × 12 each' },
+      { name:'Calf Raises (single leg)',                   sets:'4 × 20 each' },
+      { name:'Wall Sit',                                   sets:'3 × 60 sec' }
+    ]
+  },
+  Thu: {
+    name:'⚔ Push — Shoulders & Triceps Focus',
+    type:'Calisthenics · Push Variation',
+    exercises:[
+      { name:'Warm-up: Push-up negatives × 5',       sets:'slow' },
+      { name:'Handstand Hold (wall-assisted)',        sets:'4 × 20 sec' },
+      { name:'Pike Push-ups',                        sets:'4 × 15' },
+      { name:'Incline Push-ups (hands on chair)',     sets:'3 × 20' },
+      { name:'Decline Push-ups (feet on chair)',      sets:'3 × 15' },
+      { name:'Tricep Dips (chair)',                   sets:'4 × 15' },
+      { name:'Close-Grip Push-ups',                  sets:'3 × 15' },
+      { name:'Superman Hold (prone back extension)',  sets:'3 × 12' },
+      { name:'Side Plank',                           sets:'3 × 45 sec each' }
+    ]
+  },
+  Fri: {
+    name:'🏹 Pull + Core — Full Control',
+    type:'Calisthenics · Pull & Core',
+    exercises:[
+      { name:'Warm-up: Cat-cow + thoracic rotation', sets:'2 min' },
+      { name:'Pull-ups (close grip)',                sets:'3 × max' },
+      { name:'Archer Pull-ups (lean to one side)',   sets:'3 × 5 each' },
+      { name:'Inverted Rows — slow 3 sec pull',      sets:'4 × 10' },
+      { name:'Hollow Body Hold',                     sets:'4 × 30 sec' },
+      { name:'L-sit Hold (on chair edges)',          sets:'3 × 15 sec' },
+      { name:'Hanging Knee Raises',                  sets:'3 × 15' },
+      { name:'Dragon Flag Negatives',                sets:'3 × 5' },
+      { name:'V-sit Crunches',                       sets:'3 × 15' }
+    ]
+  },
+  Sat: {
+    name:'🦵 Legs — Explosive Power',
+    type:'Calisthenics · Plyometrics',
+    exercises:[
+      { name:'Warm-up: High knees + butt kicks',   sets:'2 min' },
+      { name:'Jump Squats',                        sets:'4 × 12' },
+      { name:'Broad Jumps',                        sets:'4 × 6' },
+      { name:'Box Jumps (onto chair)',             sets:'3 × 8' },
+      { name:'Lateral Bounds (side to side)',      sets:'3 × 10 each' },
+      { name:'Pistol Squat Progressions',          sets:'3 × 6 each' },
+      { name:'Tuck Jumps',                         sets:'3 × 10' },
+      { name:'Sprint Intervals 100m',              sets:'5 rounds' },
+      { name:'Walking cool-down',                  sets:'5 min' }
+    ]
+  },
+  Sun: {
+    name:'✦ Rest & Recovery',
+    type:'Active Rest · No Load',
+    exercises:[
+      { name:'20–30 min walk (fresh air)',        sets:'—' },
+      { name:'Full-body mobility flow',           sets:'15 min' },
+      { name:'Deep hip flexor stretch (60 sec)',  sets:'2 each side' },
+      { name:'Doorway chest stretch',             sets:'2 × 45 sec' },
+      { name:'Cat-cow spinal flow',               sets:'2 × 10 reps' },
+      { name:'8–9 hours sleep target',            sets:'—' },
+      { name:'Hydrate 2.5–3L water',             sets:'—' }
+    ]
+  }
+};
+
+const SNACKS = [
+  { icon:'🥛', name:'Whey Shake',     protein:28, desc:'1 scoop + water' },
+  { icon:'🥚', name:'2 Boiled Eggs',  protein:12, desc:'Easy room prep' },
+  { icon:'🫙', name:'Greek Yoghurt',  protein:18, desc:'200g pot' },
+  { icon:'🥫', name:'Tuna Can',       protein:25, desc:'Halal-labelled' },
+  { icon:'🧀', name:'Cottage Cheese', protein:14, desc:'100g serving' },
+  { icon:'🥜', name:'Mixed Nuts',     protein: 7, desc:'30g handful' },
+  { icon:'🍫', name:'Protein Bar',    protein:21, desc:'Halal-certified' },
+  { icon:'🥩', name:'Halal Jerky',    protein:24, desc:'50g pack' }
+];
+
+const TIPS = [
+  "Every rep is a command spell. Every missed meal is a broken seal. Honour the protocol.",
+  "The body that trains on no sleep is a Servant without a Master — formidable for a moment, then gone.",
+  "Progressive overload is your Noble Phantasm. Add one rep, one kg, one set — week by week.",
+  "Protein synthesis peaks during sleep. Your muscles are being forged right now while you rest.",
+  "Consistency over intensity. The greatest Servants trained every day, not just on days they felt like it.",
+  "Hydration is mana. A 2% drop in body water cuts performance by 20%. Fill that bottle.",
+  "Fajr before iron. Start with gratitude, then forge the body. That is the Archer's way.",
+  "Rest days are not weakness — they are your body projecting its Noble Phantasm: Unlimited Recovery Works.",
+  "At 6'1\" and 76kg you have the frame of a Lancer. Build the strength of an Archer. Time is your advantage.",
+  "Form is the foundation. A perfect bodyweight pull-up builds more than a sloppy weighted one.",
+  "Your boarding school meals are base camp. Your room snacks are the supply line. Guard both.",
+  "Trace On. Every workout is a new reinforcement of the blueprint you are building for your body.",
+];
+
+/* ══════════════════════════════════════════
+   STATE / STORAGE
+══════════════════════════════════════════ */
+function getState() {
+  try { return JSON.parse(localStorage.getItem('npState') || '{}'); } catch { return {}; }
+}
+function saveState(s) { localStorage.setItem('npState', JSON.stringify(s)); }
+
+function todayKey() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function dateKey(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function getDay() { return ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][new Date().getDay()]; }
+
+function getSalahForDay(dayKey) {
+  const state = getState();
+  return (state.salahTimes && state.salahTimes[dayKey])
+    ? JSON.parse(JSON.stringify(state.salahTimes[dayKey]))
+    : JSON.parse(JSON.stringify(DEFAULT_SALAH));
+}
+function saveSalahForDay(dayKey, salah) {
+  const state = getState();
+  if (!state.salahTimes) state.salahTimes = {};
+  state.salahTimes[dayKey] = salah;
+  saveState(state);
+}
+
+/* ══════════════════════════════════════════
+   NAVIGATION
+══════════════════════════════════════════ */
+function navTo(page, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('pg-'+page).classList.add('active');
+  btn.classList.add('active');
+  if (page === 'stats') renderStats();
+  if (page === 'home') refreshHome();
+  if (page === 'schedule') renderSchedulePage();
+}
+
+/* ══════════════════════════════════════════
+   CLOCK & SCHEDULE DETECTION
+══════════════════════════════════════════ */
+function pad(n){ return String(n).padStart(2,'0'); }
+function toMins(t){ const [h,m]=t.split(':').map(Number); return h*60+m; }
+
+function updateClock(){
+  const now = new Date();
+  document.getElementById('clock').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  document.getElementById('dateDisplay').textContent =
+    `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  updateCurrentBlock(now);
+}
+
+function updateCurrentBlock(now){
+  const mins = now.getHours()*60 + now.getMinutes();
+  const sched = buildSchedule(todayKey());
+  let current = null, next = null;
+  for(let i=0;i<sched.length;i++){
+    let sm = toMins(sched[i].start), em = toMins(sched[i].end);
+    if(em < sm) em += 24*60;
+    if(mins >= sm && mins < em){ current=sched[i]; next=sched[(i+1)%sched.length]; break; }
+  }
+  if(!current){ current=sched[sched.length-1]; next=sched[0]; }
+  document.getElementById('currentBlock').textContent = current.name;
+  document.getElementById('nextBlock').textContent = `Next: ${next.name} at ${next.start}`;
+}
+
+/* ══════════════════════════════════════════
+   PRAYER TRACKER
+══════════════════════════════════════════ */
+function renderPrayers(){
+  const state = getState();
+  const key = todayKey();
+  const done = (state.prayers && state.prayers[key]) || {};
+  const salah = getSalahForDay(key);
+  const row = document.getElementById('prayerRow');
+  row.innerHTML = salah.map(p => `
+    <div class="prayer-mini ${done[p.id]?'done':''}" onclick="togglePrayer('${p.id}')">
+      <span class="prayer-mini-name">${p.name}</span>
+      <span class="prayer-mini-time">${p.start}</span>
+      <span class="prayer-check">✓</span>
+    </div>
+  `).join('');
+}
+
+function togglePrayer(id){
+  const state = getState();
+  const key = todayKey();
+  if(!state.prayers) state.prayers = {};
+  if(!state.prayers[key]) state.prayers[key] = {};
+  state.prayers[key][id] = !state.prayers[key][id];
+  if(!state.prayerTotal) state.prayerTotal = 0;
+  state.prayerTotal += state.prayers[key][id] ? 1 : -1;
+  if(state.prayerTotal < 0) state.prayerTotal = 0;
+  saveState(state);
+  renderPrayers();
+  toast(state.prayers[key][id] ? `${id.charAt(0).toUpperCase()+id.slice(1)} ✓ Logged` : 'Prayer unmarked');
+}
+
+/* ══════════════════════════════════════════
+   SCHEDULE PAGE — with day picker + edit
+══════════════════════════════════════════ */
+let schedViewKey = todayKey();
+let schedEditingSalah = false;
+
+function renderSchedulePage(){
+  const sched = buildSchedule(schedViewKey);
+  const salah = getSalahForDay(schedViewKey);
+  const tl = document.getElementById('schedTimeline');
+  const now = new Date();
+  const nowMins = now.getHours()*60+now.getMinutes();
+  const isToday = schedViewKey === todayKey();
+
+  // Salah edit panel
+  const salahEditHtml = `
+    <div class="card" style="border-color:rgba(168,127,212,0.25);background:linear-gradient(135deg,rgba(123,94,167,0.06),var(--panel));">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.7rem;">
+        <div class="card-title" style="margin:0;">🕌 Salah Times — ${schedViewKey}</div>
+        <button class="btn btn-outline btn-sm" onclick="toggleSalahEdit()" id="salahEditBtn">
+          ${schedEditingSalah ? '✓ Done' : '✏ Edit'}
+        </button>
+      </div>
+      ${schedEditingSalah ? `
+        <div style="display:flex;flex-direction:column;gap:0.6rem;" id="salahEditFields">
+          ${salah.map(s => `
+            <div style="display:flex;align-items:center;gap:0.6rem;">
+              <span style="font-family:'Cinzel',serif;font-size:0.68rem;color:var(--prayer-b);min-width:52px;">${s.name}</span>
+              <input type="time" value="${s.start}" id="se-${s.id}-start"
+                style="background:var(--panel-2);border:1px solid rgba(168,127,212,0.3);border-radius:4px;color:var(--text);font-family:'Cinzel',serif;font-size:0.72rem;padding:0.3rem 0.5rem;outline:none;flex:1;">
+              <span style="color:var(--text-muted);font-size:0.75rem;">→</span>
+              <input type="time" value="${s.end}" id="se-${s.id}-end"
+                style="background:var(--panel-2);border:1px solid rgba(168,127,212,0.3);border-radius:4px;color:var(--text);font-family:'Cinzel',serif;font-size:0.72rem;padding:0.3rem 0.5rem;outline:none;flex:1;">
+            </div>
+          `).join('')}
+          <div style="display:flex;gap:0.5rem;margin-top:0.3rem;">
+            <button class="btn btn-gold btn-sm" style="flex:1;" onclick="saveSalahEdits()">Save Times</button>
+            <button class="btn btn-outline btn-sm" onclick="copyTimesToAllDays()" style="flex:1;">Copy to All Days</button>
+          </div>
+        </div>
+      ` : `
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+          ${salah.map(s=>`
+            <span class="pill pill-pr">${s.name} ${s.start}</span>
+          `).join('')}
+        </div>
+        <div style="font-size:0.75rem;color:var(--text-muted);font-style:italic;margin-top:0.5rem;">Tap Edit to change times for this day</div>
+      `}
+    </div>
+  `;
+
+  // Timeline
+  const timelineHtml = sched.map((s,i) => {
+    let sm=toMins(s.start), em=toMins(s.end);
+    if(em<sm) em+=24*60;
+    const isCurrent = isToday && nowMins>=sm && nowMins<em;
+    return `
+      <div class="sched-item">
+        <div class="sched-time-col">
+          <div class="sched-t">${s.start}</div>
+          <div class="sched-t" style="opacity:0.5">${s.end}</div>
+        </div>
+        <div class="sched-dot ${s.dot}" style="margin-top:6px;"></div>
+        <div class="sched-card-s ${isCurrent?'current-block':''}">
+          <div class="sched-name">${s.name}${isCurrent?' <span style="font-size:0.6rem;color:var(--gold);font-family:Cinzel,serif;letter-spacing:0.1em;">▶ NOW</span>':''}</div>
+          <div class="sched-desc">${s.desc}</div>
+          ${s.tip?`<div class="sched-tip">⟡ ${s.tip}</div>`:''}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  tl.innerHTML = salahEditHtml + `<div class="sched-timeline" style="padding:0 0.8rem;">${timelineHtml}</div>`;
+}
+
+function toggleSalahEdit(){
+  schedEditingSalah = !schedEditingSalah;
+  renderSchedulePage();
+}
+
+function saveSalahEdits(){
+  const salah = getSalahForDay(schedViewKey);
+  salah.forEach(s => {
+    const startEl = document.getElementById(`se-${s.id}-start`);
+    const endEl   = document.getElementById(`se-${s.id}-end`);
+    if(startEl) s.start = startEl.value;
+    if(endEl)   s.end   = endEl.value;
+  });
+  saveSalahForDay(schedViewKey, salah);
+  schedEditingSalah = false;
+  renderSchedulePage();
+  renderPrayers();
+  toast('Salah times saved for ' + schedViewKey);
+}
+
+function copyTimesToAllDays(){
+  const salah = getSalahForDay(schedViewKey);
+  // save edits first
+  salah.forEach(s => {
+    const startEl = document.getElementById(`se-${s.id}-start`);
+    const endEl   = document.getElementById(`se-${s.id}-end`);
+    if(startEl) s.start = startEl.value;
+    if(endEl)   s.end   = endEl.value;
+  });
+  // copy to next 30 days
+  for(let i=0;i<30;i++){
+    const d = new Date(); d.setDate(d.getDate()+i);
+    saveSalahForDay(dateKey(d), JSON.parse(JSON.stringify(salah)));
+  }
+  schedEditingSalah = false;
+  renderSchedulePage();
+  toast('Times copied to next 30 days');
+}
+
+function changeSchedDay(delta){
+  const d = new Date(schedViewKey+'T12:00:00');
+  d.setDate(d.getDate()+delta);
+  schedViewKey = dateKey(d);
+  document.getElementById('schedDayLabel').textContent = formatSchedDay(d);
+  schedEditingSalah = false;
+  renderSchedulePage();
+}
+
+function formatSchedDay(d){
+  const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const isToday = dateKey(d)===todayKey();
+  return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}${isToday?' · Today':''}`;
+}
+
+/* ══════════════════════════════════════════
+   WORKOUT PAGE
+══════════════════════════════════════════ */
+const DAYS_ORDER = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+function renderWorkout(){
+  const today = getDay();
+  const tabBar = document.getElementById('dayTabs');
+  const panels = document.getElementById('workoutPanels');
+
+  tabBar.innerHTML = DAYS_ORDER.map(d => `
+    <button class="day-tab ${d===today?'today-tab':''} ${d===today?'active':''}"
+      onclick="switchWorkoutDay('${d}',this)">${d}</button>
+  `).join('');
+
+  panels.innerHTML = DAYS_ORDER.map(d => {
+    const w = WORKOUTS[d];
+    const state = getState();
+    const key = todayKey();
+    const done = (state.workouts && state.workouts[key] && state.workouts[key][d]) || {};
+    const total = w.exercises.length;
+    const doneCount = Object.values(done).filter(Boolean).length;
+    const pct = total ? Math.round(doneCount/total*100) : 0;
+
+    return `
+    <div class="workout-panel ${d===today?'active':''}" id="wp-${d}">
+      <div class="card">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;margin-bottom:0.6rem;">
+          <div>
+            <div style="font-family:'Cinzel',serif;font-size:0.85rem;color:var(--gold);">${w.name}</div>
+            <div style="font-size:0.75rem;color:var(--text-dim);font-style:italic;">${w.type}</div>
+          </div>
+          <span class="pill pill-g">${doneCount}/${total}</span>
+        </div>
+        <div class="prog-wrap">
+          <div class="prog-track"><div class="prog-fill prog-gold" id="wbar-${d}" style="width:${pct}%"></div></div>
+        </div>
+        <div class="hdiv"></div>
+        ${w.exercises.map((ex,i) => `
+          <div class="exercise-item ${done[i]?'done':''}" id="ex-${d}-${i}" onclick="toggleEx('${d}',${i})">
+            <div class="ex-check">✓</div>
+            <div class="ex-info">
+              <div class="ex-n">${ex.name}</div>
+              <div class="ex-s">${ex.sets}</div>
+            </div>
+          </div>
+        `).join('')}
+        <div class="hdiv"></div>
+        <button class="btn btn-outline btn-sm btn-block" onclick="resetWorkoutDay('${d}')">⟡ Reset ${d}</button>
+      </div>
+    </div>
+    `;
+  }).join('');
+}
+
+function switchWorkoutDay(day, btn){
+  document.querySelectorAll('.day-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.workout-panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('wp-'+day).classList.add('active');
+}
+
+function toggleEx(day, idx){
+  const state = getState();
+  const key = todayKey();
+  if(!state.workouts) state.workouts = {};
+  if(!state.workouts[key]) state.workouts[key] = {};
+  if(!state.workouts[key][day]) state.workouts[key][day] = {};
+  state.workouts[key][day][idx] = !state.workouts[key][day][idx];
+
+  const done = state.workouts[key][day];
+  const w = WORKOUTS[day];
+  const doneCount = Object.values(done).filter(Boolean).length;
+
+  if(doneCount === w.exercises.length){
+    if(!state.completedDays) state.completedDays = {};
+    state.completedDays[key] = (state.completedDays[key]||0)+1;
+    if(!state.totalWorkouts) state.totalWorkouts = 0;
+    state.totalWorkouts++;
+    updateStreak(state);
+    toast('⚔ Workout Complete! Noble Phantasm Charged!');
+  }
+  saveState(state);
+
+  const el = document.getElementById(`ex-${day}-${idx}`);
+  if(el) el.classList.toggle('done', state.workouts[key][day][idx]);
+
+  const total = w.exercises.length;
+  const pct = total ? Math.round(doneCount/total*100) : 0;
+  const bar = document.getElementById(`wbar-${day}`);
+  if(bar) bar.style.width = pct+'%';
+
+  refreshHome();
+}
+
+function resetWorkoutDay(day){
+  const state = getState();
+  const key = todayKey();
+  if(state.workouts && state.workouts[key]) delete state.workouts[key][day];
+  saveState(state);
+  renderWorkout();
+  refreshHome();
+  toast('Workout reset');
+}
+
+function updateStreak(state){
+  const today = new Date();
+  let streak = 0;
+  for(let i=0;i<30;i++){
+    const d = new Date(today); d.setDate(d.getDate()-i);
+    const k = dateKey(d);
+    if(state.completedDays && state.completedDays[k]) streak++;
+    else if(i>0) break;
+  }
+  state.streak = streak;
+}
+
+/* ══════════════════════════════════════════
+   NUTRITION PAGE
+══════════════════════════════════════════ */
+function renderNutrition(){
+  const sq = document.getElementById('quickSnacks');
+  sq.innerHTML = SNACKS.map(s=>`
+    <div class="snack-q" onclick="logSnack('${s.name}',${s.protein})">
+      <span class="snack-q-icon">${s.icon}</span>
+      <span class="snack-q-name">${s.name}</span>
+      <span class="snack-q-p">+${s.protein}g protein</span>
+    </div>
+  `).join('');
+  updateProteinDisplay();
+}
+
+function updateProteinDisplay(){
+  const state = getState();
+  const key = todayKey();
+  const log = (state.proteinLog && state.proteinLog[key]) || [];
+  const total = log.reduce((a,e)=>a+e.g, 0);
+
+  document.getElementById('proteinTotal').textContent = total;
+  const pct = Math.min(100, Math.round(total/155*100));
+  document.getElementById('proteinBar').style.width = pct+'%';
+  document.getElementById('pill-p').textContent = total;
+  document.getElementById('pill-k').textContent = Math.round(total*4 + 320*4 + 75*9);
+
+  const logEl = document.getElementById('proteinLog');
+  if(!log.length){
+    logEl.innerHTML = '<div style="color:var(--text-muted);font-style:italic;font-size:0.85rem;">Nothing logged yet</div>';
+  } else {
+    logEl.innerHTML = log.map((e,i)=>`
+      <div class="log-item">
+        <span class="log-time">${e.t}</span>
+        <span class="log-name">${e.name}</span>
+        <span class="log-g">+${e.g}g</span>
+        <button class="log-del" onclick="deleteLog(${i})">✕</button>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('home-protein-num').textContent = total+'g';
+  document.getElementById('home-protein-pct').textContent = `${total} / 155g`;
+  document.getElementById('home-protein-bar').style.width = pct+'%';
+}
+
+function logSnack(name, g){
+  const state = getState();
+  const key = todayKey();
+  if(!state.proteinLog) state.proteinLog = {};
+  if(!state.proteinLog[key]) state.proteinLog[key] = [];
+  const now = new Date();
+  state.proteinLog[key].push({ name, g, t:`${pad(now.getHours())}:${pad(now.getMinutes())}` });
+  if(!state.proteinHistory) state.proteinHistory = {};
+  state.proteinHistory[key] = (state.proteinHistory[key]||0)+g;
+  saveState(state);
+  updateProteinDisplay();
+  toast(`+${g}g protein — ${name}`);
+}
+
+function adjustCustom(delta){
+  const inp = document.getElementById('customProtein');
+  inp.value = Math.max(0, Math.min(200, parseInt(inp.value||0)+delta));
+}
+
+function logCustom(){
+  const name = document.getElementById('customFoodName').value.trim() || 'Custom Food';
+  const g = parseInt(document.getElementById('customProtein').value)||0;
+  if(!g){ toast('Set a protein amount first'); return; }
+  logSnack(name, g);
+  document.getElementById('customFoodName').value = '';
+  document.getElementById('customProtein').value = '20';
+}
+
+function deleteLog(i){
+  const state = getState();
+  const key = todayKey();
+  if(state.proteinLog && state.proteinLog[key]){
+    state.proteinLog[key].splice(i,1);
+    saveState(state);
+    updateProteinDisplay();
+  }
+}
+
+function resetDay(){
+  if(!confirm('Reset today\'s protein log?')) return;
+  const state = getState();
+  const key = todayKey();
+  if(state.proteinLog) delete state.proteinLog[key];
+  saveState(state);
+  updateProteinDisplay();
+  toast('Log reset');
+}
+
+/* ══════════════════════════════════════════
+   STATS PAGE
+══════════════════════════════════════════ */
+function renderStats(){
+  const state = getState();
+  const streak = state.streak || 0;
+  document.getElementById('stat-streak').textContent = streak;
+  document.getElementById('streakNum').textContent = streak;
+  document.getElementById('home-streak-num').textContent = streak;
+  document.getElementById('stat-workouts').textContent = state.totalWorkouts || 0;
+  document.getElementById('stat-prayers').textContent = state.prayerTotal || 0;
+
+  const history = state.proteinHistory || {};
+  const vals = Object.values(history).filter(v=>v>0);
+  const avg = vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length) : 0;
+  document.getElementById('stat-protein-avg').textContent = avg+'g';
+
+  const startDate = state.startDate ? new Date(state.startDate) : new Date();
+  const diffDays = Math.max(0, Math.floor((new Date()-startDate)/(1000*60*60*24)));
+  const week = Math.min(12, Math.floor(diffDays/7)+1);
+  const pct = Math.min(100, Math.round(diffDays/84*100));
+
+  const phases = [
+    { name:'Foundation',    desc:'Master form. Build the habit, not the muscle — yet.', roman:'I' },
+    { name:'Volume Build',  desc:'Add sets or reps each week. Progressive overload begins.', roman:'II' },
+    { name:'Intensity Peak',desc:'Increase resistance. Push closer to failure on last set.', roman:'III' },
+    { name:'Deload + Assess',desc:'60% volume. Consolidate gains. Plan the next arc.', roman:'IV' }
+  ];
+  const phaseIdx = week<=3?0:week<=6?1:week<=9?2:3;
+  const phase = phases[phaseIdx];
+
+  document.getElementById('phase-name-display').textContent = `Phase ${phase.roman} — ${phase.name}`;
+  document.getElementById('phase-week-display').textContent = `Week ${week} of 12`;
+  document.getElementById('phase-roman').textContent = phase.roman;
+  document.getElementById('phase-pct').textContent = pct+'%';
+  document.getElementById('phase-bar').style.width = pct+'%';
+  document.getElementById('phase-desc').textContent = phase.desc;
+
+  renderWeekGrid(state);
+  document.getElementById('startDateInput').value = state.startDate || '';
+}
+
+function renderWeekGrid(state){
+  const grid = document.getElementById('weekGrid');
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  const monday = new Date(today); monday.setDate(today.getDate() - ((dayOfWeek+6)%7));
+  const labels = ['M','T','W','T','F','S','S'];
+  let html = '';
+  for(let i=0;i<7;i++){
+    const d = new Date(monday); d.setDate(monday.getDate()+i);
+    const k = dateKey(d);
+    const isToday = k === todayKey();
+    const hasWorkout = state.completedDays && state.completedDays[k];
+    const hasPrayer = state.prayers && state.prayers[k] && Object.values(state.prayers[k]).some(Boolean);
+    html += `
+      <div class="week-day ${isToday?'today':''} ${hasWorkout?'has-workout':''} ${hasPrayer?'has-prayer':''}">
+        <span class="wd-label">${labels[i]}</span>
+        <span class="wd-num">${d.getDate()}</span>
+        ${hasWorkout?'<div class="wd-dot" style="background:var(--gold);"></div>':''}
+        ${hasPrayer?'<div class="wd-dot" style="background:var(--prayer-b);"></div>':''}
+      </div>
+    `;
+  }
+  grid.innerHTML = html;
+}
+
+function saveStartDate(){
+  const state = getState();
+  state.startDate = document.getElementById('startDateInput').value;
+  saveState(state);
+  renderStats();
+  toast('Start date saved');
+}
+
+function exportData(){
+  const state = getState();
+  const blob = new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download=`np-tracker-${todayKey()}.json`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('Progress exported!');
+}
+
+function confirmReset(){
+  if(confirm('RESET ALL DATA? This cannot be undone. The Grail remembers nothing.')){
+    localStorage.removeItem('npState');
+    location.reload();
+  }
+}
+
+/* ══════════════════════════════════════════
+   HOME REFRESH
+══════════════════════════════════════════ */
+function refreshHome(){
+  const state = getState();
+  const key = todayKey();
+  const today = getDay();
+  const w = WORKOUTS[today];
+
+  const done = (state.workouts && state.workouts[key] && state.workouts[key][today]) || {};
+  const total = w.exercises.length;
+  const doneCount = Object.values(done).filter(Boolean).length;
+  const pct = total ? Math.round(doneCount/total*100) : 0;
+
+  document.getElementById('home-workout-summary').innerHTML =
+    `<div style="font-family:'Cinzel',serif;font-size:0.75rem;color:var(--gold);">${w.name}</div>
+     <div style="font-size:0.78rem;color:var(--text-dim);margin-top:0.2rem;">${doneCount} of ${total} complete · ${w.type}</div>`;
+
+  document.getElementById('home-workout-pct').textContent = pct+'%';
+  document.getElementById('home-workout-bar').style.width = pct+'%';
+
+  const streak = state.streak || 0;
+  document.getElementById('streakNum').textContent = streak;
+  document.getElementById('home-streak-num').textContent = streak;
+
+  updateProteinDisplay();
+}
+
+/* ══════════════════════════════════════════
+   DAILY TIP
+══════════════════════════════════════════ */
+function renderTip(){
+  const idx = new Date().getDate() % TIPS.length;
+  document.getElementById('daily-tip').textContent = `"${TIPS[idx]}"`;
+}
+
+/* ══════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════ */
+let toastTimer;
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+/* ══════════════════════════════════════════
+   PARTICLE BG
+══════════════════════════════════════════ */
+(function(){
+  const canvas = document.getElementById('bgCanvas');
+  const ctx = canvas.getContext('2d');
+  let W,H,pts=[];
+  function resize(){ W=canvas.width=window.innerWidth; H=canvas.height=window.innerHeight; }
+  function mk(){ return { x:Math.random()*W, y:Math.random()*H, r:Math.random()*1.2+0.3,
+    vx:(Math.random()-0.5)*0.25, vy:-(Math.random()*0.3+0.05),
+    a:Math.random()*0.5+0.1, c:Math.random()>0.7?'#5ba3f5':'#c9a84c' }; }
+  function init(){ pts=[]; for(let i=0;i<60;i++) pts.push(mk()); }
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    pts.forEach((p,i)=>{
+      p.x+=p.vx; p.y+=p.vy; p.a-=0.0008;
+      if(p.a<=0||p.y<-5) pts[i]=mk();
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=p.c; ctx.globalAlpha=p.a; ctx.fill();
+    });
+    ctx.globalAlpha=1;
+    requestAnimationFrame(draw);
+  }
+  resize(); init(); draw();
+  window.addEventListener('resize',()=>{ resize(); init(); });
+})();
+
+/* ══════════════════════════════════════════
+   PWA INSTALL
+══════════════════════════════════════════ */
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBanner').classList.add('visible');
+});
+document.getElementById('installBtn').addEventListener('click', async () => {
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if(outcome === 'accepted') toast('App installed! Find it on your home screen.');
+    deferredPrompt = null;
+    document.getElementById('installBanner').classList.remove('visible');
+  }
+});
+window.addEventListener('appinstalled', () => {
+  document.getElementById('installBanner').classList.remove('visible');
+  toast('Noble Phantasm Tracker installed!');
+});
+
+/* ══════════════════════════════════════════
+   SERVICE WORKER
+══════════════════════════════════════════ */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+
+/* ══════════════════════════════════════════
+   INIT
+══════════════════════════════════════════ */
+schedViewKey = todayKey();
+renderSchedulePage();
+renderWorkout();
+renderNutrition();
+renderPrayers();
+renderTip();
+refreshHome();
+updateClock();
+setInterval(updateClock, 30000);
+</script>
+</body>
+</html>
